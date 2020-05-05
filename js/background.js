@@ -42,22 +42,41 @@ function formatAmount(amount) {
   return amount / 10000;
 }
 
+function contributionFrequency(i) {
+  if (!i.contributionFrequency) {
+    return {
+      ppp: 0,
+      frequency: 'None',
+      contributed: 0,
+      toBeContributed: 0,
+    };
+  }
+
+  return {
+    ppp: formatAmount(i.contributionFrequency.amountPerFrequency),
+    frequency: i.contributionFrequency.name,
+    contributed: i.contributionFrequency.numExpectedContributionsSoFar,
+    toBeContributed: i.contributionFrequency.numExpectedTotalContributions,
+  };
+}
+
 function formatExpense(data) {
   return data.items.reduce(
     (arr, i) => {
       const [year, month, day] = i.lastAutomatedContribution || [];
       const lastContribution = year ? `${year}-${month}-${day}` : '';
-      const ppp = (i.contributionFrequency && formatAmount(i.contributionFrequency.amountPerFrequency)) || 0;
+      const { ppp, frequency, contributed, toBeContributed } = contributionFrequency(i);
+
       arr.push([
         i.id,
         i.name,
-        i.purpose,
         formatAmount(i.contributed_amount),
         formatAmount(i.target_amount),
         ppp,
-        i.description,
+        contributed,
+        toBeContributed,
         getPaused(i),
-        (i.contributionFrequency && i.contributionFrequency.name) || '-',
+        frequency,
         getFreq(i.recurrence.description),
         lastContribution,
         i.recurrence.nextOccurrenceDate,
@@ -67,7 +86,24 @@ function formatExpense(data) {
 
       return arr;
     },
-    [['Id', 'Name', 'Type', 'Current Amount', 'Target', 'PPPP', 'Description', 'Paused', 'Frequency', 'Occurrence', 'Last', 'Next', 'On Track', 'Monthly']]
+    [
+      [
+        'Id',
+        'Name',
+        'Current Amount',
+        'Target',
+        'PPPP',
+        'Contribution',
+        'To Be Contributed',
+        'Paused',
+        'Frequency',
+        'Occurrence',
+        'Last',
+        'Next',
+        'On Track',
+        'Monthly',
+      ],
+    ]
   );
 }
 
