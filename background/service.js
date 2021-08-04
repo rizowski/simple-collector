@@ -23,6 +23,12 @@ function getFreq(term) {
     return 'Quarterly';
   }
 
+  if (/every six months/i.test(term)) {
+    return 'Half Year';
+  }
+
+  console.log('UNKNOWN', term);
+
   return 'Unknown';
 }
 
@@ -60,12 +66,31 @@ function contributionFrequency(i) {
   };
 }
 
+function expectedMonthlyPayment(freq, target) {
+  const map = {
+    Yearly: (amnt) => amnt / 12,
+    Monthly: (amnt) => amnt,
+    Quarterly: (amnt) => amnt / 3,
+    Weekly: (amnt) => (amnt * 52) / 12,
+    'Bi-Weekly': (amnt) => (amnt * 26) / 12,
+    'Bi-Monthly': (amnt) => amnt / 2,
+    'Half Year': (amnt) => amnt / 6,
+  };
+
+  const zero = () => 0;
+
+  const calc = map[freq] || zero;
+
+  return formatAmount(calc(target));
+}
+
 function formatExpense(data) {
   return data.items.reduce(
     (arr, i) => {
       const [year, month, day] = i.lastAutomatedContribution || [];
       const lastContribution = year ? `${year}-${month}-${day}` : '';
       const { ppp, frequency, contributed, toBeContributed } = contributionFrequency(i);
+      const term = getFreq(i.recurrence.description);
 
       arr.push([
         i.id,
@@ -77,11 +102,11 @@ function formatExpense(data) {
         toBeContributed,
         getPaused(i),
         frequency,
-        getFreq(i.recurrence.description),
+        term,
         lastContribution,
         i.recurrence.nextOccurrenceDate,
         i.amounts.onTrack,
-        ppp * 2,
+        expectedMonthlyPayment(term, i.target_amount),
       ]);
 
       return arr;
@@ -90,7 +115,7 @@ function formatExpense(data) {
       [
         'Id',
         'Name',
-        'Current Amount',
+        'Current',
         'Target',
         'PPPP',
         'Contribution',
@@ -165,6 +190,60 @@ function createClient(sheetId) {
   };
 }
 
+async function setupListeners(msg, respond, client) {
+  try {
+    if (msg.type === 'log') {
+      console[msg.level](msg.message);
+      return;
+    }
+
+    if (msg.type === 'settings.update') {
+      chrome.storage.sync.set({ sheetId: msg.value });
+      client = createClient(msg.value, token);
+      return;
+    }
+
+    if (msg.type === 'request') {
+      console.log('Fetching for Injected', msg.what);
+      chrome.storage.local.get(msg.what, (local) => {
+        chrome.storage.sync.get(msg.what, (sync) => {
+          const result = { ...local, ...sync };
+          console.log('Responding to Injected', result);
+          respond(result);
+        });
+      });
+
+      return;
+    }
+
+    if (msg.type === 'store') {
+      console.log('Storing', msg.what);
+      if (!msg.value) {
+        console.warn('trying to store an Empty value');
+        return;
+      }
+      chrome.storage.local.set({ [msg.what]: msg.value });
+      return;
+    }
+
+    if (msg.type === 'upload') {
+      console.log('uploading', msg.what);
+
+      if (msg.what === 'expenses') {
+        await client.updateSheet('import-expenses', formatExpense(msg.value));
+        return;
+      }
+
+      if (msg.what === 'goals') {
+        console.log('goals received');
+        await client.updateSheet('import-goals', formatGoals(msg.value));
+      }
+    }
+  } catch (error) {
+    console.error('Broekn Error', error);
+  }
+}
+
 chrome.storage.sync.get('sheetId', (settings = {}) => {
   if (!settings.sheetId) {
     throw new Error('No sheet to save to. Open settings to set a sheetId');
@@ -172,50 +251,13 @@ chrome.storage.sync.get('sheetId', (settings = {}) => {
 
   let client = createClient(settings.sheetId);
 
-  chrome.runtime.onMessage.addListener(async (msg, sender, respond) => {
-    try {
-      if (msg.type === 'log') {
-        console[msg.level](msg.message);
-        return;
-      }
+  chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+    console.log(msg);
 
-      if (msg.type === 'settings.update') {
-        chrome.storage.sync.set({ sheetId: msg.value });
-        client = createClient(msg.value, token);
-        return;
-      }
+    setupListeners(msg, respond, client);
 
-      if (msg.type === 'request') {
-        console.log('Fetching', msg.what);
-        chrome.storage.local.get(msg.what, (local) => {
-          chrome.storage.sync.get(msg.what, (sync) => {
-            respond({ ...local, ...sync });
-          });
-        });
-
-        return true;
-      }
-
-      if (msg.type === 'store') {
-        console.log('Storing', msg.what);
-        chrome.storage.local.set({ [msg.what]: msg.value });
-        return;
-      }
-
-      if (msg.type === 'expenses') {
-        console.log('expenses received');
-        await client.updateSheet('import-expenses', formatExpense(msg.data));
-        await client.updateSheet('import-summary', formatSummary(msg.data));
-        return;
-      }
-
-      if (msg.type === 'goals') {
-        console.log('goals received');
-        await client.updateSheet('import-goals', formatGoals(msg.data));
-        return;
-      }
-    } catch (error) {
-      console.error('Broekn Error', error);
+    if (['request'].includes(msg.type)) {
+      return true;
     }
   });
 });

@@ -1,28 +1,32 @@
 {
   "name": "simple-collector",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "manifest_version": 2,
   "description": "",
   "homepage_url": "https://blog.rizowski.net",
   "background": {
-    "scripts": ["lib/axios.min.js", "js/background.js"],
+    "scripts": ["lib/axios.min.js", "background/service.js"],
     "persistent": true
   },
   "oauth2": {
     "client_id": "974865630618-ac5kgpuhpdmqlkh04jg3lrr5qn9d78vb.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/spreadsheets"]
   },
+  "content_security_policy": "script-src 'self' 'sha256-GgRxrVOKNdB4LrRsVPDSbzvfdV4UqglmviH9GoBJ5jk='; object-src 'self'",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAodhwDYFx8vK8eeml8JFwDKThKPHCebkvPKCfp51OvznEh2MIaY+YmjmbFPlpsUBQEEYvPkr8RCHmYOiVhrPfOrD8ZrSg//nZ/qLl2KNBN6Qb08KPGaGvzRUFD6ElLtYAX6iXewmigaz5ujAQXzKA/1KVabF1Q91+30jAvC6hQGrVYM1By/nbp26yWeCS5LChvNzJb2nIys9fhFDxIiKf7jTPHsVEl0Wb/nFkkoRktJLfbo1CpmXD5QJ4qvNnJVPN2lMp7OEYf9PFdbOW6muzIoMARARBZfVLMlYmzIXRh47H9N0Zf5uwtGld9usHR8yUeGBrfVkjfK7Rf+GMTfVLbwIDAQAB",
-  "permissions": ["https://bank.simple.com/*", "https://*.googleapis.com/*", "identity", "storage"],
+  "permissions": ["https://bank.simple.com/*", "https://*.googleapis.com/*", "identity", "storage", "tabs"],
   "content_scripts": [
     {
-      "matches": ["https://bank.simple.com/"],
-      "js": ["lib/cash.min.js", "lib/axios.min.js", "js/overview.js"],
+      "matches": ["https://bank.simple.com/*"],
+      "js": ["lib/cash.min.js", "injected-dist/overview.js"],
       "run_at": "document_end"
     }
   ],
   "icons": { "16": "img/16.png",
     "48": "img/48.png",
    "128": "img/128.png" },
-  "options_page": "options.html"
+  "options_page": "options-dist/index.html",
+  "browser_action": {
+    "default_popup": "popup-dist/index.html"
+  }
 }

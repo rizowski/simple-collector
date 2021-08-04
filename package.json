@@ -1,0 +1,40 @@
+{
+  "name": "simple-collector",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:cleanup": "rm -rf popup-dist injected-dist options-dist",
+    "prebuild:all": "npm run build:cleanup",
+    "build:injected": "parcel build -d injected-dist -t browser --no-content-hash ./injected/overview.js",
+    "build:popup": "parcel build -d popup-dist -t browser --no-content-hash --public-url /popup-dist ./popup/index.html",
+    "build:options": "parcel build -d options-dist -t browser --no-content-hash --public-url /options-dist ./options/index.html",
+    "build:all": "npm-run-all -p build:injected build:popup build:options"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rizowski/simple-collector.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rizowski/simple-collector/issues"
+  },
+  "homepage": "https://github.com/rizowski/simple-collector#readme",
+  "devDependencies": {
+    "@babel/core": "^7.9.6",
+    "@babel/preset-env": "^7.9.6",
+    "@babel/preset-react": "^7.9.4",
+    "npm-run-all": "^4.1.5",
+    "parcel-bundler": "^1.12.4"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  }
+}
